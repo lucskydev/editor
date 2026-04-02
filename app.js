@@ -20,22 +20,32 @@ const TEXT_ID = 1;
 // EMBARALHAMENTO
 // ===============================
 function seed(chave) {
-  return [...chave].reduce((s, c) => s + c.charCodeAt(0), 0);
+  return [...chave].reduce((s, c) => s + c.charCodeAt(0), 0) * 7; // Multiplicando por um fator para aumentar a complexidade
 }
 
 function embaralhar(txt, chave) {
   const s = seed(chave);
   const a = txt.split("");
   const i = [...a.keys()];
-  i.sort((x, y) => ((x + s) % 19) - ((y + s) % 19));
-  return i.map(n => a[n]).join("");
+  
+  // Misturando as posições
+  i.sort((x, y) => (((x + s) * 3 + 5) % 29) - (((y + s) * 3 + 5) % 29));
+  
+  // Adicionando caracteres aleatórios entre as letras
+  const charsAleatorios = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  return i.map(n => {
+    const letra = a[n];
+    const randomChar = charsAleatorios[Math.floor(Math.random() * charsAleatorios.length)];
+    return letra + randomChar; // Concatenando um caractere aleatório
+  }).join("").replace(/.$/, ""); // Removendo o último caractere adicional
 }
 
 function desembaralhar(txt, chave) {
   const s = seed(chave);
-  const a = txt.split("");
+  const a = txt.split("").filter((_, index) => index % 2 === 0); // Removendo caracteres aleatórios
   const i = [...a.keys()];
-  i.sort((x, y) => ((x + s) % 19) - ((y + s) % 19));
+  
+  i.sort((x, y) => (((x + s) * 3 + 5) % 29) - (((y + s) * 3 + 5) % 29));
 
   const r = [];
   i.forEach((p, k) => r[p] = a[k]);
