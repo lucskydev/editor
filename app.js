@@ -1,147 +1,94 @@
-
 // ===============================
 // SUPABASE v2
 // ===============================
 const SUPABASE_URL = "https://ikmgaxztwfsklxfuaqgx.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlrbWdheHp0d2Zza2x4ZnVhcWd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNTE4NzYsImV4cCI6MjA5MDcyNzg3Nn0.OlUfWrPtpN1ZY5ZCxwWghsBoVxLHn4utWwUEO56Anwg";
 
+const client = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// ===============================
+// ESTADO
+// ===============================
+const editor = document.getElementById("editor");
+let embaralhado = false;
+const TEXT_ID = 1;
 
-/* ================================
-   ELEMENTOS DA TELA
-================================ */
-const textArea = document.getElementById("texto");
-const btnSalvar = document.getElementById("salvar");
-const btnCarregar = document.getElementById("carregar");
-const btnEmbaralhar = document.getElementById("embaralhar");
-const btnDesembaralhar = document.getElementById("desembaralhar");
-
-/* ================================
-   CRIPTOGRAFIA AES-GCM
-================================ */
-
-// Converte texto → Uint8Array
-function strToUint8(str) {
-  return new TextEncoder().encode(str);
+// ===============================
+// EMBARALHAMENTO
+// ===============================
+function seed(chave) {
+  return [...chave].reduce((s, c) => s + c.charCodeAt(0), 0);
 }
 
-// Converte Uint8Array → texto
-function uint8ToStr(buf) {
-  return new TextDecoder().decode(buf);
+function embaralhar(txt, chave) {
+  const s = seed(chave);
+  const a = txt.split("");
+  const i = [...a.keys()];
+  i.sort((x, y) => ((x + s) % 19) - ((y + s) % 19));
+  return i.map(n => a[n]).join("");
 }
 
-// Gera chave a partir da senha
-async function gerarChave(senha, salt) {
-  const baseKey = await crypto.subtle.importKey(
-    "raw",
-    strToUint8(senha),
-    "PBKDF2",
-    false,
-    ["deriveKey"]
-  );
+function desembaralhar(txt, chave) {
+  const s = seed(chave);
+  const a = txt.split("");
+  const i = [...a.keys()];
+  i.sort((x, y) => ((x + s) % 19) - ((y + s) % 19));
 
-  return crypto.subtle.deriveKey(
-    {
-      name: "PBKDF2",
-      salt,
-      iterations: 100000,
-      hash: "SHA-256"
-    },
-    baseKey,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"]
-  );
+  const r = [];
+  i.forEach((p, k) => r[p] = a[k]);
+  return r.join("");
 }
 
-// Criptografa
-async function criptografar(texto, senha) {
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const chave = await gerarChave(senha, salt);
+// ===============================
+// AÇÕES
+// ===============================
+async function salvar() {
+  const chave = prompt("Palavra-chave:");
+  if (!chave) return;
 
-  const criptografado = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
-    chave,
-    strToUint8(texto)
-  );
+  const enc = embaralhar(editor.value, chave);
 
-  return btoa(
-    JSON.stringify({
-      iv: Array.from(iv),
-      salt: Array.from(salt),
-      data: Array.from(new Uint8Array(criptografado))
-    })
-  );
+  const { error } = await client
+    .from("texts")
+    .upsert({ id: TEXT_ID, content: enc });
+
+  if (error) console.error(error);
+  else alert("Salvo");
 }
 
-// Descriptografa
-async function descriptografar(dados, senha) {
-  const obj = JSON.parse(atob(dados));
-  const iv = new Uint8Array(obj.iv);
-  const salt = new Uint8Array(obj.salt);
-  const data = new Uint8Array(obj.data);
+async function carregar() {
+  const chave = prompt("Palavra-chave:");
+  if (!chave) return;
 
-  const chave = await gerarChave(senha, salt);
-
-  const descriptografado = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv },
-    chave,
-    data
-  );
-
-  return uint8ToStr(descriptografado);
-}
-
-/* ================================
-   BOTÕES
-================================ */
-
-btnEmbaralhar.onclick = async () => {
-  const senha = prompt("Senha para embaralhar:");
-  if (!senha) return;
-
-  textArea.value = await criptografar(textArea.value, senha);
-};
-
-btnDesembaralhar.onclick = async () => {
-  const senha = prompt("Senha para desembaralhar:");
-  if (!senha) return;
-
-  try {
-    textArea.value = await descriptografar(textArea.value, senha);
-  } catch {
-    alert("Senha incorreta ou texto inválido.");
-  }
-};
-
-btnSalvar.onclick = async () => {
-  const senha = prompt("Senha para salvar:");
-  if (!senha) return;
-
-  const textoCriptografado = await criptografar(textArea.value, senha);
-
-  const { error } = await supabase
-    .from("textos")
-    .upsert({ id: 1, conteudo: textoCriptografado });
-
-  if (error) alert("Erro ao salvar");
-  else alert("Texto salvo com sucesso!");
-};
-
-btnCarregar.onclick = async () => {
-  const { data, error } = await supabase
-    .from("textos")
-    .select("conteudo")
-    .eq("id", 1)
+  const { data, error } = await client
+    .from("texts")
+    .select("content")
+    .eq("id", TEXT_ID)
     .single();
 
-  if (error || !data) {
-    alert("Nada salvo");
-    return;
-  }
+  if (error) return console.error(error);
 
-  textArea.value = data.conteudo;
-};
+  editor.value = desembaralhar(data.content, chave);
+  embaralhado = false;
+}
 
+function alternar() {
+  const chave = prompt("Palavra-chave:");
+  if (!chave) return;
+
+  editor.value = embaralhado
+    ? desembaralhar(editor.value, chave)
+    : embaralhar(editor.value, chave);
+
+  embaralhado = !embaralhado;
+}
+
+// ===============================
+// EVENTOS (CORRETO)
+// ===============================
+document.getElementById("btnSalvar").onclick = salvar;
+document.getElementById("btnCarregar").onclick = carregar;
+document.getElementById("btnAlternar").onclick = alternar;
