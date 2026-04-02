@@ -1,35 +1,28 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Editor Seguro</title>
 
   <link rel="stylesheet" href="style.css">
 
-  <!-- Supabase -->
+  <!-- SUPABASE: APENAS UMA VEZ -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-  <header>
-    <h1>Editor Seguro</h1>
-  </header>
+  <h1>Editor Seguro</h1>
 
-  <main>
-    <textarea id="editor" placeholder="Digite seu texto aqui..."></textarea>
+  <textarea id="editor"></textarea>
 
-    <div class="buttons">
-      <button onclick="carregar()">Carregar</button>
-      <button onclick="salvar()">Salvar</button>
-      <button onclick="alternar()">Embaralhar / Desembaralhar</button>
-    </div>
-  </main>
+  <div>
+    <button id="btnCarregar">Carregar</button>
+    <button id="btnSalvar">Salvar</button>
+    <button id="btnAlternar">Embaralhar / Desembaralhar</button>
+  </div>
 
-  <footer>
-    <small>Texto salvo de forma embaralhada na nuvem</small>
-  </footer>
-
+  <!-- SEU SCRIPT (SEM type="module") -->
   <script src="app.js"></script>
 </body>
 </html>

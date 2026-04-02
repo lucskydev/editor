@@ -1,11 +1,10 @@
 // ===============================
-// CONFIGURAÇÃO SUPABASE v1
+// SUPABASE v2
 // ===============================
 const SUPABASE_URL = "https://ikmgaxztwfsklxfuaqgx.supabase.co";
 const SUPABASE_KEY = "sb_secret_fcLIkeN1ET--YMuoPH_KEQ_H2qwGr8Y";
 
-
-const supabaseClient = window.supabase.createClient(
+const client = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_KEY
 );
@@ -13,94 +12,84 @@ const supabaseClient = window.supabase.createClient(
 // ===============================
 // ESTADO
 // ===============================
-const TEXT_ID = 1;
 const editor = document.getElementById("editor");
-let estaEmbaralhado = false;
+let embaralhado = false;
+const TEXT_ID = 1;
 
 // ===============================
 // EMBARALHAMENTO
 // ===============================
-function gerarSeed(chave) {
-  let seed = 0;
-  for (const c of chave) seed += c.charCodeAt(0);
-  return seed;
+function seed(chave) {
+  return [...chave].reduce((s, c) => s + c.charCodeAt(0), 0);
 }
 
-function embaralharTexto(texto, chave) {
-  const seed = gerarSeed(chave);
-  const arr = texto.split("");
-  const idx = [...arr.keys()];
-
-  idx.sort((a, b) => ((a + seed) % 17) - ((b + seed) % 17));
-  return idx.map(i => arr[i]).join("");
+function embaralhar(txt, chave) {
+  const s = seed(chave);
+  const a = txt.split("");
+  const i = [...a.keys()];
+  i.sort((x, y) => ((x + s) % 19) - ((y + s) % 19));
+  return i.map(n => a[n]).join("");
 }
 
-function desembaralharTexto(texto, chave) {
-  const seed = gerarSeed(chave);
-  const arr = texto.split("");
-  const idx = [...arr.keys()];
+function desembaralhar(txt, chave) {
+  const s = seed(chave);
+  const a = txt.split("");
+  const i = [...a.keys()];
+  i.sort((x, y) => ((x + s) % 19) - ((y + s) % 19));
 
-  idx.sort((a, b) => ((a + seed) % 17) - ((b + seed) % 17));
-
-  const res = [];
-  idx.forEach((pos, i) => res[pos] = arr[i]);
-  return res.join("");
+  const r = [];
+  i.forEach((p, k) => r[p] = a[k]);
+  return r.join("");
 }
 
 // ===============================
-// BOTÕES
+// AÇÕES
 // ===============================
 async function salvar() {
   const chave = prompt("Palavra-chave:");
   if (!chave) return;
 
-  const textoEmbaralhado = embaralharTexto(editor.value, chave);
+  const enc = embaralhar(editor.value, chave);
 
-  const { error } = await supabaseClient
+  const { error } = await client
     .from("texts")
-    .upsert({
-      id: TEXT_ID,
-      content: textoEmbaralhado,
-      updated_at: new Date()
-    });
+    .upsert({ id: TEXT_ID, content: enc });
 
-  if (error) {
-    alert("Erro ao salvar");
-    console.error(error);
-  } else {
-    alert("Texto salvo");
-    estaEmbaralhado = true;
-  }
+  if (error) console.error(error);
+  else alert("Salvo");
 }
 
 async function carregar() {
   const chave = prompt("Palavra-chave:");
   if (!chave) return;
 
-  const { data, error } = await supabaseClient
+  const { data, error } = await client
     .from("texts")
     .select("content")
     .eq("id", TEXT_ID)
     .single();
 
-  if (error) {
-    alert("Erro ao carregar");
-    console.error(error);
-    return;
-  }
+  if (error) return console.error(error);
 
-  editor.value = desembaralharTexto(data.content, chave);
-  estaEmbaralhado = false;
+  editor.value = desembaralhar(data.content, chave);
+  embaralhado = false;
 }
 
 function alternar() {
   const chave = prompt("Palavra-chave:");
   if (!chave) return;
 
-  editor.value = estaEmbaralhado
-    ? desembaralharTexto(editor.value, chave)
-    : embaralharTexto(editor.value, chave);
+  editor.value = embaralhado
+    ? desembaralhar(editor.value, chave)
+    : embaralhar(editor.value, chave);
 
-  estaEmbaralhado = !estaEmbaralhado;
+  embaralhado = !embaralhado;
 }
+
+// ===============================
+// EVENTOS (CORRETO)
+// ===============================
+document.getElementById("btnSalvar").onclick = salvar;
+document.getElementById("btnCarregar").onclick = carregar;
+document.getElementById("btnAlternar").onclick = alternar;
 
