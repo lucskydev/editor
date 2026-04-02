@@ -1,5 +1,5 @@
 // ===============================
-// CONFIGURAÇÃO SUPABASE
+// CONFIGURAÇÃO SUPABASE v1
 // ===============================
 const SUPABASE_URL = "https://ikmgaxztwfsklxfuaqgx.supabase.co";
 const SUPABASE_KEY = "sb_secret_fcLIkeN1ET--YMuoPH_KEQ_H2qwGr8Y";
